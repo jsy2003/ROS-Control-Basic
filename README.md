@@ -27,13 +27,19 @@ ROS Control 패키지는 이러한 모든 측면은 사용자를 위해 패키�
 
 ![image](https://user-images.githubusercontent.com/93853610/144766052-8f1b44fd-7db8-47a5-a98e-628fe2c73f8b.png)
 
+[A block diagram of ROS Control] - Pic Credit: http://wiki.ros.org/ros_control
+
+
 ROS_Control은 
-- controller interface, 
-- controller manager, 
-- transmissions, 
+- controller interface
+- controller manager
+- transmissions 
 - hardware interfaces 
-- Control toolbox 를 포함하는 패키지 세트다. 
-이 모든 패키지를 함께 사용하면 로봇의 조인트 액추에이터와 상호 작용하고 제어할 수 있다.
+- Control toolbox 
+를 포함하는 패키지 세트다.  이 모든 패키지를 함께 사용하면 로봇의 조인트 액추에이터와 상호 작용하고 제어할 수 있다.
+
+ros_control 은 아래 그림과 같이 사용자/타사 어플리케이션의 입력으로 관절 상태 데이터와 입력 설정값(목표)를 취하고 
+적절한 명령을 출력으로 액추에이터에 보낸다. 
 
 
  
