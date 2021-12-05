@@ -27,6 +27,13 @@ ROS Control 패키지는 이러한 모든 측면은 사용자를 위해 패키�
 
 ![image](https://user-images.githubusercontent.com/93853610/144766052-8f1b44fd-7db8-47a5-a98e-628fe2c73f8b.png)
 
+ROS_Control은 
+controller interface, 
+controller manager, 
+transmissions, 
+hardware interfaces 
+Control toolbox 를 포함하는 패키지 세트다. 
+이 모든 패키지를 함께 사용하면 로봇의 조인트 액추에이터와 상호 작용하고 제어할 수 있다.
 
 
  
