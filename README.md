@@ -187,6 +187,36 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
               bootst::shared_ptr<controller_mamager::ControllerManager>  controller_manager_;
      };
    ```
+   #### [MyRobot_hardware_interface.cpp]
+   ```
+        #include <package_name/MyRobot_hardware_interface.h>
+        
+         MyRobot::MyRobot(ros::NodeHandle &nh)
+         {
+         }
+         
+         MyRobot::~MyRobot()
+         {
+         }
+        
+         void MyRobot::init()
+         {
+         }
+         
+         void MyRobot::update(const ros::TimerEvent &e)
+         {
+         }
+         
+         void MyRobot::read()
+         {
+         }
+         
+         void MyRobot::write(ros::Duration elapsed_time)
+         {
+         }
+        
+        
+   ```
    
    
    
