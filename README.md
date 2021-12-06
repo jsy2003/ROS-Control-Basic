@@ -183,7 +183,7 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
               ros::NodeHandle _nh;
               ros::Timer my_control_loop_;
               ros::Duration elapsed_time_;
-              double loop_hz;
+              double loop_hz_;
               bootst::shared_ptr<controller_mamager::ControllerManager>  controller_manager_;
      };
    ```
@@ -191,8 +191,16 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
    ```
         #include <package_name/MyRobot_hardware_interface.h>
         
-         MyRobot::MyRobot(ros::NodeHandle &nh)
+         MyRobot::MyRobot(ros::NodeHandle &nh) : (nh_(nh)
          {
+               init();
+               
+               controller_manager_.reset(new controller_manager::ControllerManager(this, nh_));
+               
+               loop_hz_ = 10;
+               ros::Duration  update_freq = ros::Duration(1.0/loop_hz_);
+               
+               my_control_loop_ = nh_.createTimer(update_freq, &MyRobot::update, this);
          }
          
          MyRobot::~MyRobot()
@@ -201,6 +209,12 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
         
          void MyRobot::init()
          {
+             // JointA
+             // 1. JointA 에대한 joint_state_interface 를 생성한다.
+             
+             
+             
+             
          }
          
          void MyRobot::update(const ros::TimerEvent &e)
