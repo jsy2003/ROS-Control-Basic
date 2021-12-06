@@ -266,15 +266,167 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
          
          void MyRobot::read()
          {
-             // 
+             // Write the protocol(I2C, CAN, ros_serial, ros_industrial) used to get the current joint position and 
+             // or velocity, effort from robot
+             // and fill JointStateHandle variables joint_position_[i], joint_velocity_[i], joint_effort_[i]
          }
          
          void MyRobot::write(ros::Duration elapsed_time)
          {
+             //safty
+             effortJointSaturationInterface::enforceLimits(elapsed_time); //// enforce limits for JointA and JointB
+             positionJointSaturationInterface::enforceLimits(elapsed_time); // enforce limits for JointC
+             
+             // Write the protocol(I2C, CAN, ros_serial, ros_industrial) used to send the commands to the robot's actuators
+             // the output commands need to send are joint_effort_command_[0] for JointA, 
+             //                                      joint_effort_command_[1] for JointB,
+             //                                      joint_position_command_ for JointC
          }
         
-        
+         int main(int argc, char **argv)
+         {
+             // Init ROS Node
+             ros::init(argc, argv, "MyRobot_hardware_interface_node");
+             ros::NodeHandle nh;
+             
+             //Separate Sinner thread for the Non-Real time callbacks such as service callbacks to load controllers
+             ros::MultiThreadedspinner(2);
+             
+             // Create the object of the robot hardware_interface class and spin the thread. 
+             MyRobot robot(nh);
+             spinner.spin();
+             return 0;
+         }
    ```
+   
+update() 메서드는 단순히 read ( ) 메서드를 호출 하여 현재 관절 상태를 가져옵니다. 
+그런 다음 현재 관절 상태가 컨트롤러 관리자로 업데이트되어 오류 ( 현재 - 목표) 를 계산하고 PID 루프를 사용하여  각 관절에 대한 출력 명령을 생성합니다.  그리고 마지막으로 write () 메서드를 호출 하여 출력 명령을  액추에이터/조인트 에 보냅니다 .
+
+위의 코드를 로봇용 하드웨어 인터페이스 및 제어 루프를 작성하기 위한 상용구 코드로 사용할 수 있다. 
+ 
+[참고] https://github.com/SlateRobotics/tr1_hardware_interface
+[블로그]https://slaterobotics.medium.com/how-to-implement-ros-control-on-a-custom-robot-748b52751f2e
+
+
+로봇에 대한 하드웨어 인터페이스 노드를 작성한 후, 로봇을 제어하기 위한 조인트 액추에이터의 컨트롤러 및 조인트 제한을 선언하는 일부 구성 파일을 작성해야 합니다. 
+구성 파일을 작성하기 전에 먼저 실제로 제어하려는 대상  ( 관절의 위치, 노력 또는 속도)을 결정해야 합니다. 이 로봇을 예로 들면서 저는 관절 위치 센서만 있다고 말했습니다. 즉, 관절의 위치 피드백만 얻을 수 있다는 뜻입니다. 따라서 로봇의 위치를 제어하기 위한 구성 파일을 작성합니다.
+
+#### [controller.yaml]
+```
+    MyRobot:
+        #Publish all joint states
+        joint_update:
+            type:joint_state_controller/JointStateController
+            publish_rate: 50
+            
+        JointA_EffortController:                                # Name of the controller
+            type:effort_controller/JointPositionController      # JointA used effort interface this controller type is used
+            joint:JointA                                        # Name of the joint for which this controller belong to
+            pid:{p:100.0, i:10.0, d:1.0}                        # PID values
+            
+        JointB_EffortController:
+            type:effort_controller/JointPositionController
+            joint:JointB
+            pid:{p:100.0, i:1.0, d:0.0}
+            
+        JointC_PositionController:
+            type:position_controller/JointPositionController
+            joint:JointC
+             # No PID values defined since this controller simply passes the input position command to the actuators.
+ ```
+
+#### [joint_limits.yaml]
+```
+    joint_limits:
+        JointA:
+            has_position_limits: true
+            min_position: -1.57
+            max_position: 1.57
+            
+            has_velocity_limits:true
+            max_velocity:1.5
+            
+            has_acceleration_limits: false
+            max_acceleration:0.0
+            
+            has_jerk_limits: false
+            max_jerk:0.0
+            
+            has_effort_limits:true
+            max_effort:255
+            
+         JointB:
+            has_position_limits: true
+            min_position: 0
+            max_position: 3.14
+            
+            has_velocity_limits:true
+            max_velocity:1.5
+            
+            has_acceleration_limits: false
+            max_acceleration:0.0
+            
+            has_jerk_limits: false
+            max_jerk:0.0
+            
+            has_effort_limits:true
+            max_effort:255
+
+        JointC:
+            has_position_limits: true
+            min_position: 0
+            max_position: 3.14
+            
+            has_velocity_limits:false
+            max_velocity:1.5
+            
+            has_acceleration_limits: false
+            max_acceleration:0.0
+            
+            has_jerk_limits: false
+            max_jerk:0.0
+            
+            has_effort_limits:false
+            max_effort:0
+```
+ 
+ #### [MyRobot_Control.launch]
+ ```
+    <launch>
+        <rosparam file="$(find YOUR_PACKAGE_NAME)/config/controller.yaml" command="load"/>
+        <rosparam file="$(find YOUR_PACKAGE_NAME)/config/joint_limits.yaml" command="load/>
+        
+        <node name="MyRobotHardwareInterface" pkg="YOUR_PACKAGE_NAME" type="MyRobot_hardware_interface_node" output="screen"/>
+        
+        <node name="robot_state_publisher" pkg="robot_state_publiosher" type="state_publisher"/>
+        
+        <node name="controller_spawner" pkg="controller_namager" type="spawner" respawn="false" output="screen" 
+                args="/MyRobot/joint_update
+                      /MyRobot/JointA_EffortController
+                      /MyRobot/JointB_EffortController
+                      /MyRobot/JointC_PositionController
+                    "/>
+    </launch>
+ ```
+
+ ### 로봇에서 ros_control을 사용하는 데 필요한 사항을 요약하겠습니다.
+ ### 1.로봇의 hardware_interface 노드를 작성해야 합니다.
+ ### 2. 조인트 인터페이스 및 애플리케이션 및 PID 값 ( 필요한 경우)을 기반으로 조인트에 대한 컨트롤러 유형을 선택하는 구성 파일을 작성합니다(controller.yaml)
+ ### 3. 로봇의 관절 한계를 정의하는 구성 파일을 작성하십시오(joint_limits.yaml)
+ ### 4. controller_manager를 통해 컨트롤러를 로드하고 시작합니다(launch file)
+ ### 5. 토픽 인터페이스를 사용하여 컨트롤러에 입력 목표를 보냅니다.
+ #### 예제 로봇을 제어하기 위한 주제 이름입니다.
+ #### JointA:  /MyRobot/JointA_EffortController/command
+ #### JointB:  /MyRobot/JointB_EffortController/command
+ #### JointC:  /MyRobot/JointC_PositionController/command
+ 
+따라서 위의 예제 로봇 코드를 템플릿으로 사용하여 자신의 로봇에 ros_control을 설정할 수 있습니다 
+   
+   
+   
+   
+   
+   
    
    
    
