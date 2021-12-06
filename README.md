@@ -83,11 +83,113 @@ effort interface 에 명령을 보낼때 사용한다. 이것은 제어하고자
 이 컨트롤러 플러그인은 위치(라디안/미터)값을 입력으로 받아들인다. error(목표위치 - 현재위치) 는 PID 루프를 통해 output velocity command 에 맵핑된다.
 
 #### [velocity_controllers/JointVelocityController] :
-이 컨트롤러 플러그인은 속도(라디안/초, 미터/초) 값을 입력으로 받아들인다. 
+이 컨트롤러 플러그인은 속도(라디안/초, 미터/초) 값을 입력으로 받아들인다. 입력속도값은 단순히 joint 액추에이터에 출력 명령으로 전달된다. PID 값은 출력명령에 영향을 미치지 않는다.
+
+#### [velocity_controllers/JointGroupVelocityController] :
+이 컨트롤러는 joint group 에 대한 velocity_controllers/JointVelocityController 와 같은 기능을 한다.
+
+### [position_controllers] :
+위치 인터페이스에 명령을 보낼때 사용한다. 즉, 제어 하려는 joint 액추에이터가 위치명령을 직접 수락한다.
+
+#### [position_controllers/JointPositionController] :
+이 컨트롤러 플러그인은 위치(라디안/미터)값을 입력으로 받아들인다. 입력 위치 값은 단순히 joint 액추에이터에 출력명령으로 전달된다. PID 값은 출력 명령에 영향을 미치지 않는다.
+
+#### [position_controllers/JointGroupPositionController] :
+이 컨트롤러는 position_controllers/JointPositionController 과 동일한 기능을 한다.
+
+### [joint_trajectory_controllers] :
+ 이 컨트롤러는 joint group 에서 관절공간 궤적을 실행하는데 사용된다. 궤적은 도달할 웨이포인트 세트로 지정한다. 웨이포인트는 
+ 위치와 선택적으로 속도 및 가속도로 구성된다. (http://wiki.ros.org/joint_trajectory_controller)
+ 
+ #### [effort_controllers/JointTrajectoryController] :
+ 이 컨트롤러 플러그인은 힘[전류(또는) 전압]을 수용하는 조인트 액츄에이터에 사용됩니다. 오류에 따른 위치+속도 궤적은 PID 루프를 통해 출력 에포트 명령에 매핑됩니다.
+ 
+ #### [velocity_controllers/JointTrajectoryController] :
+ 이 컨트롤러 플러그인은 속도 명령을 직접 받는 조인트 액추에이터에 사용됩니다. 오류에 따른 위치+속도 궤적은 PID 루프를 통해 출력 속도 명령에 매핑됩니다.
+ 
+ #### [position_controllers/JointTrajectoryController] :
+ 이 컨트롤러 플러그인은 위치 명령을 직접 받는 조인트 액추에이터에 사용됩니다. 지정된 궤적에서 원하는 위치가 단순히 관절로 전달됩니다. P, I, D의 값은 출력 명령에 영향을 미치지 않습니다.
+ 
+위에 나열한 컨트롤러의 종류는 가장 기본적이고 가장 많이 사용하는 컨트롤러이다
+ros_control 패키지는 몇 가지 더 유용한 컨트롤러를 제공한다. 
+전체 컨트롤러 목록을 알고 싶다면 ros_control 패키지에 있는 ros_controllers 의 소스 코드를 살펴  보십시오. 
+(https://github.com/ros-controls/ros_controllers)
 
 
+## [hardware_interface] :
+hardware_interface는 로봇 하드웨어 추상화를 구성하기 위한 모든 빌딩 블록을 구현한다. 
+로봇의 소프트웨어 표현이다. 아래와 같이 다양한 유형의 모터/액추에이터 및 센서에 대한 인터페이스 세트가 있다.
 
+- ### 조인트 액추에이터용 인터페이스
+```
+- EffortJointInterface : 이 인터페이스는 힘(전압/전류)명령을 받아들이는 조인트 액추에이터에 사용된다. 이 인터페이스는 effort_controllers 와 함꼐 사용된다.
 
+- VelocityJointInterface : 이 인터페이스는 속도 명령을 직접 받는 도인트 액추에이터에 사용된다. velocity_controllers 와 함께 사용된다.
+
+- PositionJointInterface : 이 인터페이스는 위치 명령을 직접 받는 조인트 액추에이터에 사용된다. position_controllers 와 함께 사용된다.
+```
+- ### 관절 센서용 인터페이스
+```
+- JointStateInterface : 이 인터페이스는 관절의 현재 위치 또는 속도 또는 힘(토크)를 얻기위한 센서가 있을때 사용된다. joint_state_controller 와 함께 사용한다.
+
+JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에서 차례로 데이타를 사용하는 로봇의 현재 관절위치를 가져오기 때문에 거의 모든 로봇에서 사용된다.
+
+- ImuSensorInterface : 이 인터페이스는 관절/로봇의 방향, 각속도 및 선형 가속도를 얻는 데 사용되는 IMU 센서가 있을 때 사용됩니다. 이것은 imu_sensor_controller와 함께 사용됩니다.
+```
+
+사용중인 모터 및 센서의 유형에 따라 인터페이스를 선택해야 한다. 
+
+예로써 3개의 관절이 있는 로봇을 가정하고 이에 대한 인터페이스를 작성한다.
+로봇에는 3개의 액추에이터 JointA, JointB, JointC 가 있으며 각 관절에는 위치센서가 있다. JointA 와 JointB 는 effort command을 수락하고, JointC 는 position command를 수락한다고 가정하자.
+
+먼저 로봇을 위한 catkin 패키지를 생성하자, 그런다음 MyRobot_hardware_interface.h, MyRobot_hardware_interfrace.cpp 를 작성하자
+
+#### [MyRobot_hardware_interface.h]
+```
+     #include <hardware_interface/joint_state_interface.h>
+     #include <hardware_interface/joint_command_interface.h>
+     #include <hardware_interface/robot_hw.h>
+     #include <joint_limits_interface/joint_limits.h>
+     #include <joint_limits_interface/joint_limits_interface.h>
+     #include <controller_manager/controller_manage.h>
+     #include <boost/scopedptr.hpp>
+     #include <ros/ros.h>
+     
+     class MyRobot : public hardware_interface::RobotHW
+     {
+           public:
+              MyRobot(ros::NodeHandle &nh);
+              ~MyRobot();
+              
+              void init();
+              void update(const ros::TimerEvent &e);
+              void read();
+              void write(ros::Duration elapsed_time);
+           protected:
+              hardware_interface::JointStateInterface     joint_state_interface_;
+              hardware_interface::EffortJointInterface    effort_joint_interface_;
+              hardware_interface::PositionJointInterface  position_joint_interface_;
+              
+              joint_limits_interface::JointLimits                       limits;
+              joint_limits_interface::EffortJointSaturationInterface    effortJointSaturationInterface;
+              joint_limits_interface::PositionJointSaturationInterface  positionJointSaturationInterface;
+              
+              double joint_position_[3];
+              double joint_velocity_[3];
+              double joint_effort_[3];
+              double joint_effort_command_[3];
+              double joint_position_command_[3];
+              
+              ros::NodeHandle _nh;
+              ros::Timer my_control_loop_;
+              ros::Duration elapsed_time_;
+              double loop_hz;
+              bootst::shared_ptr<controller_mamager::ControllerManager>  controller_manager_;
+     };
+   ```
+   
+   
+   
 
 
 
