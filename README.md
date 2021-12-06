@@ -177,8 +177,8 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
               double joint_position_[3];
               double joint_velocity_[3];
               double joint_effort_[3];
-              double joint_effort_command_[3];
-              double joint_position_command_[3];
+              double joint_effort_command_[2];
+              double joint_position_command_;
               
               ros::NodeHandle _nh;
               ros::Timer my_control_loop_;
@@ -210,19 +210,63 @@ JointStateInterface는 로봇의 순운동학을 계산하기 위헤 tf/tf2 에�
          void MyRobot::init()
          {
              // JointA
-             // 1. JointA 에대한 joint_state_interface 를 생성한다.
+             // 1. Joint에 대한 joint_state_interface 를 생성한다.
+             hardware_interface::JointStateHandle   jointStateHandleA("JointA", &joint_position_[0], 
+                                                                                &joint_velocity_[0],
+                                                                                &joint_effort_[0]);
+             hardware_interface::JointStateHandle   jointStateHandleB("JointB", &joint_position_[1], 
+                                                                                &joint_velocity_[1], 
+                                                                                &joint_effort_[1]);
+             hardware_interface::JointStateHandle   jointStateHandleC("JointC", &joint_position_[2],
+                                                                                &joint_velocity_[2],
+                                                                                &joint_effort_[2]);
+             joint_state_interface_.registerHandle(jointStateHandleA);
+             joint_state_interface_.registerHandle(jointStateHandleB);
+             joint_state_interface_.registerHandle(jointStateHandleC);
              
+             // 2. JointA, B effort command
+             hardware_interface::JointHandle   jointEffortHandleA(jointStateHandleA, &joint_effort_command_[0]);
+             hardware_interface::JointHandle   jointEffortHandleB(jointStateHandleB, &joint_effort_command_[1]);
+             effort_joint_interface_.registerHandle(jointEffortHandleA);
+             effort_joint_interface_.registerHandle(jointEffortHandleB);
              
+             // 3. JointC position command
+             hardware_interface::JointHandle   jointPositionHandleC(jointStateHandleC, &joint_position_command_);
+             position_joint_interface_.registerHandle(jointPositionHandleC);
              
+             // 4. JointA, B,C joint limits interface
+             joint_limits_interface::getJointLimits("JointA", nh_, limits);
+             joint_limits_interface::getJointLimits("JointB", nh_, limits);
+             joint_limits_interface::getJointLimits("JointC", nh_, limits);
              
+             joint_limits_interface::EffortJointSaturationHandle   jointLimitsHandleA(jointEffortHandleA, limits);
+             joint_limits_interface::EffortJointSaturationHandle   jointLimitsHandleB(jointEffortHandleB, limits);
+             joint_limits_interface::PositionJointSaturationHandle jointLimitsHandleC(jointPositionHandleC, limits);
+             
+             effortJointSaturationInterface.registerHandle(jointLimitsHandleA);
+             effortJointSaturationInterface.registerHandle(jointLimitsHandleB);
+             positionJointSaturationInterface.registerHandle(jointLimitsHandleC);
+             
+             // Register all joints interface
+             registerInterface(&joint_state_interface_);
+             registerInterface(&effort_joint_interface_);
+             registerInterface(&position_joint_interface_);
+             registerInterface(&effortJointSaturationInterface);
+             registerInterface(&positionJointSaturationInterface);
          }
          
+         // control loop
          void MyRobot::update(const ros::TimerEvent &e)
          {
+             elapsed_time_ = ros::Duration(e.current_real - e.last_real);
+             read();
+             controller_manager_->update(ros::Time::now(), elapsed_time_);
+             write(elapsed_time_);
          }
          
          void MyRobot::read()
          {
+             // 
          }
          
          void MyRobot::write(ros::Duration elapsed_time)
